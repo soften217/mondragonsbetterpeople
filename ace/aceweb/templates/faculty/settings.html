@@ -1,0 +1,155 @@
+<head>
+  <title>ACE Program | Settings</title>
+
+  <link rel="stylesheet" type="text/css" href="css/faculty/settings.css">
+</head>
+
+<body>
+
+    <div class="col-md-11 centerCol">
+      <div class="row settingsContainer">
+
+        <div class="col-md-12 no-side-padding">
+
+          <div class="panel panel-default">
+
+              <div class="panel-heading">
+                <h3 class="panel-title">Account Information</h3>
+              </div>
+
+              <div class="panel-body">
+
+                <div class="row">
+                  <div class="col-md-12">
+                    <div class="pull-left">
+                      <p class="setting-label"><b>Password</b></p>                    
+                    </div>
+                    <div class="pull-right">
+                      <button class="btn btn-primary editBtn" data-toggle="modal" data-target="#pwordModal" ng-click="showPwordModal()">Edit</button>
+                    </div>
+                  </div>
+                </div>
+
+                <hr>
+                <br>
+
+                <div class="row">
+                  <div class="col-md-12">
+                    <div class="pull-left">
+                      <p class="setting-label"><b>Contact Number</b></p>               
+                    </div>
+                    <div class="pull-right">
+                      <button class="btn btn-primary editBtn" data-toggle="modal" data-target="#contactModal" ng-click="showContactModal()">Edit</button>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+
+  <div id="pwordModal" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+
+      <div class="modal-content">
+
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal"><span class="glyphicon glyphicon-remove custom-header-color" aria-hidden="true"></span></button>
+          <h4 class="modal-title custom-header-color">Update Password</h4>
+        </div>
+
+        <div class="modal-body">
+          <form name="settingsForm" class="form-horizontal custom-form" role="form" ng-submit="changePassword(settingsForm)" novalidate>
+
+            <div class="form-group">
+              <label  class="col-md-12 control-label" for="oldPasswordInput">Old Password</label>
+              <div class="col-md-12">
+                <input type="password" class="form-control" id="oldPasswordInput" name="oldPassword" ng-model="oldPassword" required/>
+              </div>
+            </div>
+            <div ng-messages="settingsForm.oldPassword.$error" ng-show="settingsForm.$submitted">
+              <p class="invalid-text" ng-message="invalidOldPword">Invalid password</p>
+              <p class="invalid-text" ng-message="required">This field is required</p>         
+            </div>
+
+            <div class="form-group">
+              <label class="col-md-12 control-label">New Password</label>
+              <div class="col-md-12">
+                <input type="password" class="form-control" id="userPasswordInput" name="userPassword" ng-model="userPassword" ng-model-options="{allowInvalid: true}" pattern="^.*(?=.*\d)(?=.*[A-Za-z]).*$" minlength="8" required/>
+              </div>
+            </div>
+            <div ng-messages="settingsForm.userPassword.$error" ng-show="settingsForm.$submitted">  
+              <p class="invalid-text" ng-message="samePword">Invalid password</p>
+              <p class="invalid-text" ng-message="required">This field is required</p>
+              <p class="invalid-text" ng-message="minlength">Must be atleast 8 characters</p>
+              <p class="invalid-text" ng-message="pattern">Must be a combination of letters and numbers</p>             
+            </div>
+
+            <div class="form-group">
+              <label class="col-md-12 control-label">Confirm Password</label>
+              <div class="col-md-12">
+                <input type="password" class="form-control" id="userConfirmPasswordInput" name="userConfirmPassword" ng-model="userConfirmPassword" compare-to="userPassword" required/>
+              </div>
+            </div>
+            <div ng-messages="settingsForm.userConfirmPassword.$error" ng-show="settingsForm.$submitted">
+              <p class="invalid-text" ng-message="required">This field is required</p>
+              <p class="invalid-text" ng-message="compareTo">Password don't match</p>
+            </div>
+
+            <div class="saveBtn">
+              <button type="submit" class="btn btn-primary" ng-disabled="disableSaveBtn">{{saveBtn}}</button>
+            </div>
+
+          </form>
+        </div>
+
+      </div>
+
+    </div>
+  </div><!-- modal closing tag -->
+
+  <div id="contactModal" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+
+      <div class="modal-content">
+
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal"><span class="glyphicon glyphicon-remove custom-header-color" aria-hidden="true"></span></button>
+          <h4 class="modal-title custom-header-color">Update Contact</h4>
+        </div>
+
+        <div class="modal-body">
+          <form name="settingsForm2" class="form-horizontal custom-form" role="form" ng-submit="confirmContact(settingsForm2)" novalidate>
+
+            <div class="form-group">
+              <label  class="col-md-12 control-label" for="newContactNumInput">Contact Number</label>
+              <div class="col-md-12">
+                <input type="text" class="form-control" id="newContactNumInput" name="newContactNum" ng-model="newContactNum" pattern="^[\d ()+-]+$" maxlength="20" required/>
+              </div>
+            </div>
+            <div ng-messages="settingsForm2.newContactNum.$error" ng-show="settingsForm2.$submitted">
+              <p class="invalid-text" ng-message="required">This field is required</p>
+              <p class="invalid-text" ng-message="pattern">Invalid format</p>
+              <p class="invalid-text" ng-message="maxlength">Maximum of 20 characters</p>
+            </div>
+
+            <div class="saveBtn">
+              <button type="submit" class="btn btn-primary" ng-disabled="disableSaveBtn">{{saveBtn}}</button>
+            </div>
+
+          </form>
+        </div>
+
+      </div>
+
+    </div>
+  </div><!-- modal closing tag -->
+
+</body>
+

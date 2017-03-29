@@ -1,0 +1,46 @@
+@font-face {
+    font-family: acre-regular;
+    src: url('../../fonts/acre-regular.ttf');
+}
+
+body {
+    font-weight: 500;
+    font-size: 1.05em;
+    font-family: gotham-book;
+}
+
+.manageFacultyTab {
+  background: #122143 none repeat scroll 0 0;
+  border-left: 5px solid #5584ff;
+  padding-left: 25px;
+  text-decoration: none;
+}
+
+#facultyRegModal .modal-dialog {
+  width:520px;
+}
+
+.modal-body .form-horizontal .control-label {
+  text-align: left;
+  padding-bottom: 7px;
+}
+
+.custom-form {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.regBtn {
+  padding-top: 10px;
+  padding-bottom: 10px;
+  text-align: right;
+}
+
+.invalid-text {
+  margin-top: -10px;
+  color: #f00;
+}
+
+form.ng-submitted input.ng-invalid, form.ng-submitted select.ng-invalid {
+  border:1px solid #f00;
+}
