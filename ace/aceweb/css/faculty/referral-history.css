@@ -1,0 +1,78 @@
+@font-face {
+    font-family: acre-regular;
+    src: url('../../fonts/acre-regular.ttf');
+}
+
+body {
+    font-weight: 500;
+    font-size: 1.05em;
+    font-family: gotham-book;
+}
+
+.reportTab {
+  background: #122143 none repeat scroll 0 0;
+  border-left: 5px solid #5584ff;
+  padding-left: 25px;
+  text-decoration: none;
+}
+
+.historyTab {
+  background: #122143 none repeat scroll 0 0;
+  border-left: 5px solid #5584ff;
+  padding-left: 25px;
+  text-decoration: none;
+}
+
+#comment {
+  height: 100px;
+  width: 100%;
+  padding:1%;
+  
+}
+
+.panel-body {
+  border: solid 3px #10326F;
+  border-radius: 0px 0px;
+}
+
+.modal-body .form-horizontal .control-label {
+  text-align: left;
+  padding-bottom: 7px;
+}
+
+.custom-form {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.modalBtn {
+  padding-top: 10px;
+  padding-bottom: 10px;
+  text-align: right;
+}
+
+.custom-modal-title {
+  font-size: 15px;
+}
+
+#viewModal .modal-dialog {
+  width:60%;
+}
+
+#viewModal .modal-body {
+  overflow-y: auto;
+  max-height: 480px;
+  text-align: justify;
+}
+
+.reportFieldLabel {
+  font-size: 11.5px;
+}
+
+.reportFieldData {
+  font-size: 10.5px;
+}
+
+.reportBtn {
+  width: 130px;
+}
