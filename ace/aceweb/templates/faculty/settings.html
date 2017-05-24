@@ -70,7 +70,7 @@
             <div class="form-group">
               <label  class="col-md-12 control-label" for="oldPasswordInput">Old Password</label>
               <div class="col-md-12">
-                <input type="password" class="form-control" id="oldPasswordInput" name="oldPassword" ng-model="oldPassword" required/>
+                <input type="password" class="form-control" id="oldPasswordInput" name="oldPassword" ng-model="oldPassword" ng-change="setValidOldPassword(settingsForm)" required/>
               </div>
             </div>
             <div ng-messages="settingsForm.oldPassword.$error" ng-show="settingsForm.$submitted">
@@ -79,9 +79,9 @@
             </div>
 
             <div class="form-group">
-              <label class="col-md-12 control-label">New Password</label>
+              <label class="col-md-12 control-label">New Password <i class="glyphicon glyphicon-question-sign" title="Must have at least 8 alphanumeric characters"></i></label>
               <div class="col-md-12">
-                <input type="password" class="form-control" id="userPasswordInput" name="userPassword" ng-model="userPassword" ng-model-options="{allowInvalid: true}" pattern="^.*(?=.*\d)(?=.*[A-Za-z]).*$" minlength="8" required/>
+                <input type="password" class="form-control" id="userPasswordInput" name="userPassword" ng-model="userPassword" ng-model-options="{allowInvalid: true}" ng-change="setValidCurrentPassword(settingsForm)" pattern="^.*(?=.*\d)(?=.*[A-Za-z]).*$" minlength="8" required/>
               </div>
             </div>
             <div ng-messages="settingsForm.userPassword.$error" ng-show="settingsForm.$submitted">  
@@ -128,7 +128,7 @@
           <form name="settingsForm2" class="form-horizontal custom-form" role="form" ng-submit="confirmContact(settingsForm2)" novalidate>
 
             <div class="form-group">
-              <label  class="col-md-12 control-label" for="newContactNumInput">Contact Number</label>
+              <label  class="col-md-12 control-label" for="newContactNumInput">Contact Number <i class="glyphicon glyphicon-question-sign" title="Must only have numbers, parenthesis, plus and minus symbol"></i></label>
               <div class="col-md-12">
                 <input type="text" class="form-control" id="newContactNumInput" name="newContactNum" ng-model="newContactNum" pattern="^[\d ()+-]+$" maxlength="20" required/>
               </div>

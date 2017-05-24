@@ -1,12 +1,27 @@
 //MAIN MODULE
-angular.module('aceWeb', ['aceWeb.controller','aceWeb.directive','ui.router','ngStorage','ngMessages', 'ui.bootstrap', 'ngTouch', 'ngAnimate','checklist-model','luegg.directives','angular.filter','chart.js', 'ngCapsLock']) //kailangan yang ui.router pag gagamit ng $stateProvider. Yung 'aceWeb' naman is yung name ng module. Nakalink sya dun sa body tag ng index.html file which tells na yung module na 'aceWeb' ay e e implement sa html file na yun. Lahat ng may "app." ay under ng 'aceWeb' module
+angular.module('aceWeb', ['oc.lazyLoad','ui.router','ngStorage','ngMessages','ui.bootstrap','ngTouch','ngAnimate','angular.filter','ngCapsLock'])
 
 
 // <------------------------------------------------------------------>
 
 
-.config(['$stateProvider', '$urlRouterProvider', '$locationProvider', '$httpProvider', function($stateProvider, $urlRouterProvider, $locationProvider, $httpProvider)
+.config(['$stateProvider', '$urlRouterProvider', '$locationProvider', '$httpProvider', '$ocLazyLoadProvider', function($stateProvider, $urlRouterProvider, $locationProvider, $httpProvider, $ocLazyLoadProvider)
 {
+  $ocLazyLoadProvider.config({
+    modules: [{
+      name: 'chart.js',
+      files: ["lib/chart/Chart.min.js","lib/chart/angular-chart.min.js","lib/chart/html2canvas.js"],
+      serie: true
+    },
+    {
+      name: 'checklist-model',
+      files: ["lib/checklist-model.js"]
+    },
+    {
+      name: 'luegg.directives',
+      files: ["lib/scrollglue.js"]
+    }]
+  });
 
  	$stateProvider
 
@@ -15,7 +30,12 @@ angular.module('aceWeb', ['aceWeb.controller','aceWeb.directive','ui.router','ng
 	    url: '/', // eto naman ung customizable url na pwede nating e set. So pag '' lang yung nilagay natin natin it means na sa domain lang ng website tayo pupunta para ma accesss yung view which is http://localhost/aceWeb/
 	    templateUrl: 'templates/common/login.html', // eto yung location ng view sa project directory
 	    controller: 'LoginController', // eto yung pangalan ng controller na ilalagay sa html file
-      accessLevel: 0
+      accessLevel: 0,
+      resolve: {
+        loadFiles: ['$ocLazyLoad', function ($ocLazyLoad) {
+          return $ocLazyLoad.load(['js/components/controller/common/LoginController.js']);
+        }]
+      }
 	  })
 
     .state('forgotPassword',
@@ -23,21 +43,36 @@ angular.module('aceWeb', ['aceWeb.controller','aceWeb.directive','ui.router','ng
       url: '/forgotpassword',
       templateUrl: 'templates/common/forgot-password.html',
       controller: 'ForgotPasswordController',
-      accessLevel: 0
+      accessLevel: 0,
+      resolve: {
+        loadFiles: ['$ocLazyLoad', function ($ocLazyLoad) {
+          return $ocLazyLoad.load(['js/components/controller/common/ForgotPasswordController.js']);
+        }]
+      }
     })
 
     .state('resetPassword',
     {
       url: '/resetpassword?email&hashcode',
       templateUrl: 'templates/common/reset-password-form.html',
-      controller: 'ForgotPasswordController'
+      controller: 'ForgotPasswordController',
+      resolve: {
+        loadFiles: ['$ocLazyLoad', function ($ocLazyLoad) {
+          return $ocLazyLoad.load(['js/components/controller/common/ForgotPasswordController.js']);
+        }]
+      }
     })
 
     .state('accountSetup',
     {
       url: '/accountsetup?email&hashcode',
       templateUrl: 'templates/common/account-setup.html',
-      controller: 'AccountSetupController'
+      controller: 'AccountSetupController',
+      resolve: {
+        loadFiles: ['$ocLazyLoad', function ($ocLazyLoad) {
+          return $ocLazyLoad.load(['js/components/controller/common/AccountSetupController.js']);
+        }]
+      }
     })
 
     .state('errorInvalidLink',
@@ -61,16 +96,40 @@ angular.module('aceWeb', ['aceWeb.controller','aceWeb.directive','ui.router','ng
 	    templateUrl: 'templates/faculty/faculty.html',
       loginRequired: true,
       accessLevel: 3,
-	    controller: 'FacultyController'
+	    controller: 'FacultyController',
+      resolve: {
+        loadFiles: ['$ocLazyLoad', function ($ocLazyLoad) {          
+          return $ocLazyLoad.load(['luegg.directives','checklist-model','js/components/controller/faculty/FacultyController.js']);              
+        }]
+      }
 	  })
 
     .state('faculty.referralForm',
     {
-      url: '/referralform',
+      url: '/referral/form',
       templateUrl: 'templates/faculty/referral-form.html',
       loginRequired: true,
       accessLevel: 3,
-      controller: 'ReferralFormController'
+      controller: 'ReferralFormController',
+      resolve: {
+        loadFiles: ['$ocLazyLoad', function ($ocLazyLoad) {
+          return $ocLazyLoad.load(['js/components/controller/faculty/ReferralFormController.js']);
+        }]
+      }
+    })
+
+    .state('faculty.referralHistory',
+    {
+      url: '/referral/history',
+      templateUrl: 'templates/faculty/referral-history.html',
+      loginRequired: true,
+      accessLevel: 3,
+      controller: 'ReferralHistoryController',
+      resolve: {
+        loadFiles: ['$ocLazyLoad', function ($ocLazyLoad) {
+          return $ocLazyLoad.load(['js/components/controller/faculty/ReferralHistoryController.js']);
+        }]
+      }
     })
 
     .state('faculty.messaging',
@@ -79,7 +138,12 @@ angular.module('aceWeb', ['aceWeb.controller','aceWeb.directive','ui.router','ng
       templateUrl: 'templates/faculty/messaging.html',
       loginRequired: true,
       accessLevel: 3,
-      controller: 'MessagesController'
+      controller: 'MessagesController',
+      resolve: {
+        loadFiles: ['$ocLazyLoad', function ($ocLazyLoad) {
+          return $ocLazyLoad.load(['js/components/controller/common/MessagesController.js']);
+        }]
+      }
     })
 
     .state('faculty.settings',
@@ -88,7 +152,12 @@ angular.module('aceWeb', ['aceWeb.controller','aceWeb.directive','ui.router','ng
       templateUrl: 'templates/faculty/settings.html',
       loginRequired: true,
       accessLevel: 3,
-      controller: 'SettingsController'
+      controller: 'SettingsController',
+      resolve: {
+        loadFiles: ['$ocLazyLoad', function ($ocLazyLoad) {
+          return $ocLazyLoad.load(['js/components/controller/common/SettingsController.js']);
+        }]
+      }
     })
 
     .state('faculty.404Inside',
@@ -106,7 +175,12 @@ angular.module('aceWeb', ['aceWeb.controller','aceWeb.directive','ui.router','ng
 	    templateUrl: 'templates/admin/admin.html',
 	    controller: 'AdminController',
       loginRequired: true,
-      accessLevel: 2
+      accessLevel: 2,
+      resolve: {
+        loadFiles: ['$ocLazyLoad', function ($ocLazyLoad) {          
+          return $ocLazyLoad.load(['chart.js','luegg.directives','checklist-model','lib/date.js','lib/pdf/jspdf.min.js','js/components/controller/admin/AdminController.js']);              
+        }]
+      }
 	  })
 
     .state('admin.reports',
@@ -115,7 +189,12 @@ angular.module('aceWeb', ['aceWeb.controller','aceWeb.directive','ui.router','ng
       templateUrl: 'templates/admin/reports.html',
       controller: 'ReportsController',
       loginRequired: true,
-      accessLevel: 2
+      accessLevel: 2,
+      resolve: {
+        loadFiles: ['$ocLazyLoad', function ($ocLazyLoad) {
+          return $ocLazyLoad.load(['js/components/controller/admin/ReportsController.js']);
+        }]
+      }
     })
 
     .state('admin.messaging',
@@ -124,8 +203,12 @@ angular.module('aceWeb', ['aceWeb.controller','aceWeb.directive','ui.router','ng
       templateUrl: 'templates/admin/messaging.html',
       controller: 'MessagesController',
       loginRequired: true,
-      accessLevel: 2
-
+      accessLevel: 2,
+      resolve: {
+        loadFiles: ['$ocLazyLoad', function ($ocLazyLoad) {
+          return $ocLazyLoad.load(['js/components/controller/common/MessagesController.js']);
+        }]
+      }
     })
 
     .state('admin.manageFaculty',
@@ -134,7 +217,12 @@ angular.module('aceWeb', ['aceWeb.controller','aceWeb.directive','ui.router','ng
       templateUrl: 'templates/admin/manage-faculty.html',
       controller: 'ManageFacultyController',
       loginRequired: true,
-      accessLevel: 2
+      accessLevel: 2,
+      resolve: {
+        loadFiles: ['$ocLazyLoad', function ($ocLazyLoad) {
+          return $ocLazyLoad.load(['js/components/controller/admin/ManageFacultyController.js']);
+        }]
+      }
     })
 
     .state('admin.manageStudents',
@@ -143,7 +231,12 @@ angular.module('aceWeb', ['aceWeb.controller','aceWeb.directive','ui.router','ng
       templateUrl: 'templates/admin/manage-students.html',
       controller: 'ManageStudentController',
       loginRequired: true,
-      accessLevel: 2
+      accessLevel: 2,
+      resolve: {
+        loadFiles: ['$ocLazyLoad', function ($ocLazyLoad) {
+          return $ocLazyLoad.load(['js/components/controller/admin/ManageStudentController.js']);
+        }]
+      }
     })
 
     .state('admin.manageDatabase',
@@ -152,7 +245,12 @@ angular.module('aceWeb', ['aceWeb.controller','aceWeb.directive','ui.router','ng
       templateUrl: 'templates/admin/manage-database.html',
       controller: 'DatabaseController',
       loginRequired: true,
-      accessLevel: 2
+      accessLevel: 2,
+      resolve: {
+        loadFiles: ['$ocLazyLoad', function ($ocLazyLoad) {
+          return $ocLazyLoad.load(['js/components/controller/admin/DatabaseController.js']);
+        }]
+      }
     })
 
     .state('admin.summary',
@@ -161,8 +259,12 @@ angular.module('aceWeb', ['aceWeb.controller','aceWeb.directive','ui.router','ng
       templateUrl: 'templates/admin/summary.html',
       controller: 'SummaryController',
       loginRequired: true,
-      accessLevel: 2
-
+      accessLevel: 2,
+      resolve: {
+        loadFiles: ['$ocLazyLoad', function ($ocLazyLoad) {
+          return $ocLazyLoad.load(['js/components/controller/admin/SummaryController.js']);
+        }]
+      }
     })
 
     .state('admin.settings',
@@ -171,34 +273,18 @@ angular.module('aceWeb', ['aceWeb.controller','aceWeb.directive','ui.router','ng
       templateUrl: 'templates/admin/settings.html',
       controller: 'SettingsController',
       loginRequired: true,
-      accessLevel: 2
-
+      accessLevel: 2,
+      resolve: {
+        loadFiles: ['$ocLazyLoad', function ($ocLazyLoad) {
+          return $ocLazyLoad.load(['js/components/controller/common/SettingsController.js']);
+        }]
+      }
     })
 
     .state('admin.404Inside',
     {
       templateUrl: 'templates/common/404-inside.html'
     })
-
-
-    /*.state('admin.newFaculty',
-    {
-      url: '/admin/new/faculty',
-      templateUrl: 'templates/admin/new-faculty.html',
-      controller: 'FacultyController',
-      loginRequired: true,
-      accessLevel: 2
-    })
-
-    .state('admin.deleteFaculty',
-    {
-      url: '/admin/delete/faculty',
-      templateUrl: 'templates/admin/delete-faculty.html',
-      controller: 'FacultyController',
-      loginRequired: true,
-      accessLevel: 2
-    })*/
-
 
 
     //SUPERADMIN
@@ -210,7 +296,12 @@ angular.module('aceWeb', ['aceWeb.controller','aceWeb.directive','ui.router','ng
 	    templateUrl: 'templates/superadmin/superadmin.html',
 	    controller: 'SuperAdminController',
       loginRequired: true,
-      accessLevel: 1
+      accessLevel: 1,
+      resolve: {
+        loadFiles: ['$ocLazyLoad', function ($ocLazyLoad) {          
+          return $ocLazyLoad.load(['luegg.directives','checklist-model','js/components/controller/superadmin/SuperAdminController.js']);              
+        }]
+      }
 	  })
 
     .state('superadmin.manageAdmin',
@@ -219,7 +310,12 @@ angular.module('aceWeb', ['aceWeb.controller','aceWeb.directive','ui.router','ng
       templateUrl: 'templates/superadmin/manage-admin.html',
       controller: 'ManageAdminController',
       loginRequired: true,
-      accessLevel: 1
+      accessLevel: 1,
+      resolve: {
+        loadFiles: ['$ocLazyLoad', function ($ocLazyLoad) {
+          return $ocLazyLoad.load(['js/components/controller/superadmin/ManageAdminController.js']);
+        }]
+      }
     })
 
     .state('superadmin.settings',
@@ -228,35 +324,18 @@ angular.module('aceWeb', ['aceWeb.controller','aceWeb.directive','ui.router','ng
       templateUrl: 'templates/superadmin/settings.html',
       controller: 'SettingsController',
       loginRequired: true,
-      accessLevel: 1
+      accessLevel: 1,
+      resolve: {
+        loadFiles: ['$ocLazyLoad', function ($ocLazyLoad) {
+          return $ocLazyLoad.load(['js/components/controller/common/SettingsController.js']);
+        }]
+      }
     })
 
     .state('superadmin.404Inside',
     {
       templateUrl: 'templates/common/404-inside.html'
     })
-
-
-    /*.state('superadmin.newAdmin',
-    {
-      url: '/superadmin/new/admin',
-      templateUrl: 'templates/superadmin/new-admin.html',
-      controller: 'AdminController',
-      loginRequired: true,
-      accessLevel: 1
-    })
-
-    .state('superadmin.deleteAdmin',
-    {
-      url: '/superadmin/delete/admin',
-      templateUrl: 'templates/superadmin/delete-admin.html',
-      controller: 'AdminController',
-      loginRequired: true,
-      accessLevel: 1
-
-    })*/
-
-
 
 
     $urlRouterProvider.otherwise(function($injector, $location)
@@ -328,10 +407,12 @@ angular.module('aceWeb', ['aceWeb.controller','aceWeb.directive','ui.router','ng
 // <---------------------SERVICES--------------------------------------------->
 
 
-.service('AuthService', function ($q, $http, $localStorage, config)
+.service('AuthService', function ($q, $http, $localStorage, config, $state)
 {
   var email = '';
   var role = '';
+  var name = '';
+  var department = '';
 
   function getPayLoad()
   {
@@ -350,6 +431,8 @@ angular.module('aceWeb', ['aceWeb.controller','aceWeb.directive','ui.router','ng
   {
     email = '';
     role = '';
+    name = '';
+    department = '';
     $http.defaults.headers.common.Authorization = '';
     $localStorage.$reset();
   }
@@ -374,6 +457,26 @@ angular.module('aceWeb', ['aceWeb.controller','aceWeb.directive','ui.router','ng
     return role
   }
 
+  this.getName = function ()
+  {
+    if(getPayLoad())
+    {
+      name = getPayLoad().data.name;
+    }
+
+    return name
+  }
+
+  this.getDepartment = function ()
+  {
+    if(getPayLoad())
+    {
+      department = getPayLoad().data.department;
+    }
+
+    return department
+  }
+
   this.storeUserCredentials = function (token)
   {
     // store username and token in local storage to keep user logged in between page refreshes
@@ -386,15 +489,7 @@ angular.module('aceWeb', ['aceWeb.controller','aceWeb.directive','ui.router','ng
   this.logout = function()
   {
     destroyUserCredentials();
-  }
-
-  this.authenticate = function()
-  {
-    return $http({
-      method: 'POST',
-      url: config.apiUrl + '/auth',
-      headers: {'Content-Type': 'application/x-www-form-urlencoded'}
-    })
+    $state.go('login');
   }
 })
 
@@ -402,26 +497,32 @@ angular.module('aceWeb', ['aceWeb.controller','aceWeb.directive','ui.router','ng
 // <------------------------------------------------------------------>
 
 
-.run(function ($rootScope, $http, $location, $localStorage, $state, AuthService)
+.run(function ($rootScope, $localStorage, $state, AuthService, AUTH_EVENTS, $transitions)
 {
-  $rootScope.$on('$stateChangeStart', function(event, toState, toParams, fromState, fromParams)
-  {//&& AuthService.getRole() != toState.accessLevel
-    if (toState.loginRequired && fromState.accessLevel != 0)
-    {
-      AuthService.authenticate();
-    }
+  $rootScope.$on(AUTH_EVENTS.notAuthenticated, function(event)
+  {
+    event.preventDefault();
+    AuthService.logout();   
+  })
 
-    //needs improvement to prevent empty value in localstorage
-    if (toState.loginRequired && !$localStorage.currentUser)
-    {
-      event.preventDefault();
+  $rootScope.$on(AUTH_EVENTS.notAuthorized, function(event)
+  {
+    event.preventDefault();
+    $state.go('login');
+  })
+
+  $transitions.onStart({}, function($transitions)
+  {
+    $state.defaultErrorHandler(function(){});
+
+    if ($transitions.$to().loginRequired && !$localStorage.currentUser)
+    {     
       AuthService.logout();
     }
 
-    if(($localStorage.currentUser && toState.accessLevel == 0) || (toState.loginRequired && AuthService.getRole() != toState.accessLevel))
+    if(($localStorage.currentUser && $transitions.$to().accessLevel == 0) || ($transitions.$to().loginRequired && AuthService.getRole() != $transitions.$to().accessLevel))
     {
-      event.preventDefault();
-
+      //event.preventDefault();
       if(AuthService.getRole() == 3)
       {
         $state.go('faculty.referralForm');
@@ -436,4 +537,5 @@ angular.module('aceWeb', ['aceWeb.controller','aceWeb.directive','ui.router','ng
       }
     }
   })
+  
 })

@@ -28,6 +28,23 @@ class DbOperation
     }
 
 
+    public function verifyAdminAccount($email, $pword, $status)
+    {
+        $userType = 2;
+        $stmt = $this->con->prepare("SELECT hash FROM user WHERE email=? and status=? and user_type_id=?");
+        $stmt->bind_param("sii", $email, $status, $userType);
+        $stmt->execute();
+        $account = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if(password_verify($pword, $account['hash']))
+        {
+            return true;
+        }
+        return false;
+    }
+
+
     public function getAccountRole($email)
     {
         $stmt = $this->con->prepare("SELECT user_type_id FROM user WHERE email=? UNION SELECT user_type_id FROM superadmin_account WHERE email=?");
@@ -40,10 +57,22 @@ class DbOperation
     }
 
 
+    public function getAccountRoleName($role)
+    {
+        $stmt = $this->con->prepare("SELECT user_type FROM user_type WHERE user_type_id=?");
+        $stmt->bind_param("i", $role);
+        $stmt->execute();
+        $accountRole = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        return $accountRole['user_type'];
+    }
+
+
     public function isLinkValid($email, $hashCode)
     {
-        $stmt = $this->con->prepare("SELECT * FROM user WHERE email=? and hashCode=?");
-        $stmt->bind_param("ss", $email, $hashCode);
+        $stmt = $this->con->prepare("SELECT email FROM user WHERE email=? AND hashcode=? UNION SELECT email FROM superadmin_account WHERE email=? AND hashcode=?");
+        $stmt->bind_param("ssss", $email, $hashCode, $email, $hashCode);
         $stmt->execute();
         $stmt->store_result();
         $num_rows = $stmt->num_rows;
@@ -70,28 +99,32 @@ class DbOperation
     // not used
     public function isAccountActive($email)
     {
-        $stmt = $this->con->prepare("SELECT status FROM user WHERE email=?");
-        $stmt->bind_param("s",$email);
+        $stmt = $this->con->prepare("SELECT * FROM user WHERE email=? AND hash IS NOT NULL");
+        $stmt->bind_param("s", $email);
         $stmt->execute();
-        $active = $stmt->get_result()->fetch_assoc();
+        $stmt->store_result();
+        $num_rows = $stmt->num_rows;
         $stmt->close();
-        if($active['status'] == 0)
-        {
-          return false;
-        }
-        else
-        {
-          return true;
-        }
+
+        return $num_rows>0;
     }
 
 
-    public function forgotPassword($email, $hashCode, $timestamp)
+    public function forgotPassword($email, $hashCode, $timestamp, $role)
     {
-        $stmt = $this->con->prepare("UPDATE user SET hashcode =?, token_exp=? WHERE email=?");
+        if($role == 1)
+        {
+            $stmt = $this->con->prepare("UPDATE superadmin_account SET hashcode =?, token_exp=? WHERE email=?");
+        }
+        else
+        {
+            $stmt = $this->con->prepare("UPDATE user SET hashcode =?, token_exp=? WHERE email=?");
+        }
+
         $stmt->bind_param("sss",$hashCode, $timestamp, $email);
         $result = $stmt->execute();
         $stmt->close();
+
         if($result)
         {
             return true;
@@ -106,8 +139,8 @@ class DbOperation
         $date = getTimestamp();
         $currentDate= $date->format('Y-m-d H:i:s');
 
-        $stmt = $this->con->prepare("SELECT token_exp FROM user where email=?");
-        $stmt->bind_param("s", $email);
+        $stmt = $this->con->prepare("SELECT token_exp FROM user where email=? UNION SELECT token_exp FROM superadmin_account where email=?");
+        $stmt->bind_param("ss", $email, $email);
         $stmt->execute();
         $token = $stmt->get_result()->fetch_assoc();
 
@@ -134,18 +167,16 @@ class DbOperation
 
         if($role == 1)
         {
-            $stmt = $this->con->prepare("UPDATE superadmin_account SET hash=? WHERE email=?");
-            $stmt->bind_param("ss", $password, $email);
-            $result = $stmt->execute();
-            $stmt->close();
+            $stmt = $this->con->prepare("UPDATE superadmin_account SET hashcode=NULL, token_exp=NULL, hash=? WHERE email=?");
         }
         else
         {
             $stmt = $this->con->prepare("UPDATE user SET hashcode=NULL, token_exp=NULL, hash=? WHERE email=?");
-            $stmt->bind_param("ss", $password, $email);
-            $result = $stmt->execute();
-            $stmt->close();
         }
+
+        $stmt->bind_param("ss", $password, $email);
+        $result = $stmt->execute();
+        $stmt->close();
 
         if($result)
         {
@@ -174,6 +205,19 @@ class DbOperation
         $isRead = 0;
         $stmt = $this->con->prepare("SELECT DISTINCT report_id FROM message WHERE ((receiver_email=? and is_read=? and receiver_status=?) or (sender_email=? and is_read_sender=? and sender_status=?)) ");
         $stmt->bind_param("siisii", $email, $isRead, $status, $email, $isRead, $status);
+        $stmt->execute();
+        $stmt->store_result();
+        $num_rows = $stmt->num_rows;
+        $stmt->close();
+        return $num_rows;
+    }
+
+
+    public function getUncounseledReportCount($department)
+    {
+        $status = 1;
+        $stmt = $this->con->prepare("SELECT * FROM report WHERE report_status_id=? and status=? and department_id=?");
+        $stmt->bind_param("iii", $status, $status, $department);
         $stmt->execute();
         $stmt->store_result();
         $num_rows = $stmt->num_rows;
@@ -284,7 +328,7 @@ class DbOperation
 
         foreach ($reasons as $reason)
         {
-          if($reason->check == true && $reason->value != 0)
+          if($reason->check == true && isset($reason->value))
           {
             $stmt2 = $this->con->prepare("INSERT INTO reason(report_id, referral_reason_id) values(?, ?)");
             $stmt2->bind_param("ii", $report_id, $reason->value);
@@ -311,11 +355,11 @@ class DbOperation
 
         if($department==1)
         {
-          $stmt2 = $this->con->prepare("INSERT INTO shs_student(student_id, program_id, level) values(?, ?, ?) ON DUPLICATE KEY UPDATE program_id=?, level=?, report_count=report_count+1");
+          $stmt2 = $this->con->prepare("INSERT INTO shs_student(student_id, program_id, level) values(?, ?, ?) ON DUPLICATE KEY UPDATE program_id=?, level=?, report_count=report_count+1, status=1");
         }
         else
         {
-          $stmt2 = $this->con->prepare("INSERT INTO college_student(student_id, program_id, level) values(?, ?, ?) ON DUPLICATE KEY UPDATE program_id=?, level=?, report_count=report_count+1");
+          $stmt2 = $this->con->prepare("INSERT INTO college_student(student_id, program_id, level) values(?, ?, ?) ON DUPLICATE KEY UPDATE program_id=?, level=?, report_count=report_count+1, status=1");
         }
 
         $stmt2->bind_param("siiii", $studId, $course, $year, $course, $year);
@@ -353,7 +397,8 @@ class DbOperation
       $user = $stmt->get_result()->fetch_assoc();
       $stmt->close();
 
-      if($user == null){
+      if($user == null)
+      {
         $user['first_name'] = "Super";
       }
 
@@ -370,7 +415,8 @@ class DbOperation
       $user = $stmt->get_result()->fetch_assoc();
       $stmt->close();
 
-      if($user == null){
+      if($user == null)
+      {
         $user['last_name'] = "Admin";
       }
 
@@ -396,12 +442,35 @@ class DbOperation
     }
 
 
-    public function deleteUser($email)
+    public function deleteUser($email, $status)
     {
-        $stmt = $this->con->prepare("UPDATE user SET status=0 WHERE email=?");
-        $stmt->bind_param("s",$email);
+        $stmt = $this->con->prepare("UPDATE user SET status=?, hash = NULL, hashcode = NULL WHERE email=?");
+        $stmt->bind_param("is", $status, $email);
         $result = $stmt->execute();
         $stmt->close();
+        if($result)
+        {
+            return true;
+        }
+        return false;
+    }
+
+
+    public function deleteStudent($studentId, $department, $status)
+    {
+        if($department == 1)
+        {
+          $stmt = $this->con->prepare("UPDATE shs_student SET status=? WHERE student_id=?");
+        }
+        else
+        {
+          $stmt = $this->con->prepare("UPDATE college_student SET status=? WHERE student_id=?");
+        }
+
+        $stmt->bind_param("is",$status,$studentId);
+        $result = $stmt->execute();
+        $stmt->close();
+
         if($result){
             return true;
           }
@@ -448,10 +517,10 @@ class DbOperation
 
 
     //lists accounts
-    public function listAccounts($role, $status)
+    public function listAccounts($role)
     {
-
-        $stmt = $this->con->prepare("SELECT * FROM user WHERE user_type_id=? and status=?");
+        $status = 1;
+        $stmt = $this->con->prepare("SELECT email, user_type_id, first_name, last_name, contact_number FROM user WHERE user_type_id=? AND (hashcode IS NOT NULL OR status=?)");
         $stmt->bind_param("ii",$role, $status);
         $stmt->execute();
         $result= $stmt->get_result();
@@ -463,13 +532,9 @@ class DbOperation
         $stmt->close();
 
         return $arrResult;
-
     }
 
 
-    //checks if old password is same as the new password
-    //checks if the input for the old password is different from the password
-      //in the db
     public function isPasswordValid($email, $password, $oldPassword)
     {
       $stmt = $this->con->prepare("SELECT hash FROM user WHERE email=? UNION SELECT hash FROM superadmin_account WHERE email=?");
@@ -558,8 +623,7 @@ class DbOperation
 
         $stmt = $this->con->prepare("INSERT INTO message(report_id, sender_email, receiver_email, message_body, message_subject, is_read, is_read_sender, receiver_status, sender_status, message_date) values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->bind_param("issssiiiis", $report_id, $sender, $receiver, $message, $subject, $isRead, $isReadSender, $status, $status, $timestamp);
-        $stmt->execute();
-        $result = $stmt->get_result();
+        $result = $stmt->execute();
         $stmt->close();
 
         if($result)
@@ -575,6 +639,24 @@ class DbOperation
     {
       $stmt = $this->con->prepare("SELECT email FROM admin_view WHERE department_id=? AND status=?");
       $stmt->bind_param("ii",$department, $status);
+      $stmt->execute();
+      $result = $stmt->get_result();
+      $arrResult = array();
+      while ($myrow = $result->fetch_assoc())
+      {
+          $arrResult[] = $myrow;
+      }
+      $stmt->close();
+
+      return $arrResult;
+    }
+
+
+    //get faculty accounts
+    public function getFacultyAccounts($userType, $status)
+    {
+      $stmt = $this->con->prepare("SELECT email FROM user WHERE user_type_id=? AND status=?");
+      $stmt->bind_param("ii",$userType, $status);
       $stmt->execute();
       $result = $stmt->get_result();
       $arrResult = array();
@@ -620,11 +702,22 @@ class DbOperation
     }
 
 
+    public function getDepartmentName($departmentId)
+    {
+        $stmt = $this->con->prepare("SELECT department_name FROM department WHERE department_id=?");
+        $stmt->bind_param("i", $departmentId);
+        $stmt->execute();
+        $accountRole = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        return $accountRole['department_name'];
+    }
+
 
     public function listShsReports($status)
     {
         $stmt = $this->con->prepare("SELECT * FROM shs_report WHERE status=?");
-        $stmt->bind_param("i",$status);
+        $stmt->bind_param("i", $status);
         $stmt->execute();
         $result = $stmt->get_result();
         $arrResult = array();
@@ -654,15 +747,16 @@ class DbOperation
       return $arrResult;
     }
 
+
     public function updateShsStudent($studentId, $originalId, $lastName, $firstName, $program, $level)
     {
         $stmt = $this->con->prepare("UPDATE student SET student_id=?, last_name=?, first_name=? WHERE student_id=?");
-        $stmt->bind_param("ssss",$studentId, $lastName, $firstName, $originalId);
+        $stmt->bind_param("ssss", $studentId, $lastName, $firstName, $originalId);
         $result = $stmt->execute();
         $stmt->close();
 
         $stmt2 = $this->con->prepare("UPDATE shs_student SET student_id=?, level=?, program_id=? WHERE student_id=?");
-        $stmt2->bind_param("siis",$studentId, $level, $program, $originalId);
+        $stmt2->bind_param("siis", $studentId, $level, $program, $originalId);
         $result2 = $stmt2->execute();
         $stmt2->close();
 
@@ -677,7 +771,7 @@ class DbOperation
     public function listCollegeReports($status)
     {
         $stmt = $this->con->prepare("SELECT * FROM college_report WHERE status=?");
-        $stmt->bind_param("i",$status);
+        $stmt->bind_param("i", $status);
         $stmt->execute();
         $result = $stmt->get_result();
         $arrResult = array();
@@ -689,6 +783,7 @@ class DbOperation
 
         return $arrResult;
     }
+
 
     public function listCollegeStudent($status)
     {
@@ -706,23 +801,53 @@ class DbOperation
       return $arrResult;
     }
 
-    public function updateCollegeStudent($studentId, $orig_studentId,  $lastName, $firstName, $program, $level)
+
+    public function updateCollegeStudent($studentId, $originalId,  $lastName, $firstName, $program, $level)
     {
       $stmt = $this->con->prepare("UPDATE student SET student_id=?, last_name=?, first_name=? WHERE student_id=?");
-      $stmt->bind_param("ssss",$studentId, $lastName, $firstName, $originalId);
+      $stmt->bind_param("ssss", $studentId, $lastName, $firstName, $originalId);
       $result = $stmt->execute();
       $stmt->close();
 
       $stmt2 = $this->con->prepare("UPDATE college_student SET student_id=?, level=?, program_id=? WHERE student_id=?");
-      $stmt2->bind_param("siis",$studentId, $level, $program, $originalId);
+      $stmt2->bind_param("siis", $studentId, $level, $program, $originalId);
       $result2 = $stmt2->execute();
       $stmt2->close();
 
       if($result && $result2)
       {
-          return true;
+        return true;
       }
       return false;
+    }
+
+
+    public function getFacultyReferral($email)
+    {
+        $stmt = $this->con->prepare("SELECT report_id, email, student_id, report_status_id, report_status, report_date, subject_name, term, school_year, referral_comment, program, level, student_fname, student_lname FROM shs_report WHERE email=? UNION SELECT report_id, email, student_id, report_status_id, report_status, report_date, subject_name, term, school_year, referral_comment, program, level, student_fname, student_lname FROM college_report WHERE email=?");
+        $stmt->bind_param("ss", $email, $email);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $arrResult = array();
+        while ($myrow = $result->fetch_assoc())
+        {
+            $arrResult[] = $myrow;
+        }
+        $stmt->close();
+
+        return $arrResult;
+    }
+
+
+    public function getUpdateStatus($reportId)
+    {
+        $stmt = $this->con->prepare("SELECT is_updated FROM report WHERE report_id=?");
+        $stmt->bind_param("s", $reportId);
+        $stmt->execute();
+        $accountRole = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        return $accountRole['is_updated'];
     }
 
 
@@ -744,11 +869,14 @@ class DbOperation
         $stmt->bind_param("i",$report_id);
         $result = $stmt->execute();
         $stmt->close();
-        if($result){
+
+        if($result)
+        {
             return true;
-          }
+        }
         return false;
     }
+
 
     public function markReport($isRead, $reportId)
     {
@@ -765,25 +893,339 @@ class DbOperation
     }
 
 
-    public function getSYList($department)
+    public function markUpdatedReport($status, $reportId)
     {
-      $stmt = $this->con->prepare("SELECT school_year FROM report WHERE department_id=? GROUP BY school_year ORDER BY school_year ASC");
-      $stmt->bind_param("i", $department);
+        $stmt = $this->con->prepare("UPDATE report SET is_updated=? WHERE report_id=?");
+        $stmt->bind_param("ii", $status, $reportId);
+        $result = $stmt->execute();
+        $stmt->close();
+
+        if($result)
+        {
+            return true;
+        }
+        return false;
+    }
+
+
+    public function getSYList($department, $status)
+    {
+        $stmt = $this->con->prepare("SELECT school_year FROM report WHERE department_id=? AND status=? GROUP BY school_year ORDER BY school_year ASC");
+        $stmt->bind_param("ii", $department, $status);
+        $stmt->execute();
+        $result= $stmt->get_result();
+        $arrResult = array();
+
+        if($result->num_rows)
+        {
+            while ($myrow = $result->fetch_assoc())
+            {
+                $arrResult[] = $myrow;
+            }
+        }
+        else
+        {
+            $arrResult[]['school_year'] = "No Records";
+        }
+
+        $stmt->close();
+        return $arrResult;
+    }
+
+
+    public function getTermData($department, $status, $schoolYear)
+    {
+      $terms = array(1, 2, 3);
+
+      if($department == 1)
+      {
+        $stmt = $this->con->prepare("SELECT (SELECT COUNT(*) FROM report WHERE term=? AND department_id=? AND status=? AND school_year=?) as firstTermCount, (SELECT COUNT(*) FROM report WHERE term=? AND department_id=? AND status=? AND school_year=?) as secondTermCount");
+        $stmt->bind_param("iiisiiis", $terms[0], $department, $status, $schoolYear, $terms[1], $department, $status, $schoolYear);
+      }
+      else
+      {
+        $stmt = $this->con->prepare("SELECT (SELECT COUNT(*) FROM report WHERE term=? AND department_id=? AND status=? AND school_year=?) as firstTermCount, (SELECT COUNT(*) FROM report WHERE term=? AND department_id=? AND status=? AND school_year=?) as secondTermCount, (SELECT COUNT(*) FROM report WHERE term=? AND department_id=? AND status=? AND school_year=?) as thirdTermCount");
+        $stmt->bind_param("iiisiiisiiis", $terms[0], $department, $status, $schoolYear, $terms[1], $department, $status, $schoolYear, $terms[2], $department, $status, $schoolYear);
+      }
+
       $stmt->execute();
       $result= $stmt->get_result();
       $arrResult = array();
       while ($myrow = $result->fetch_assoc())
       {
-          $arrResult[] = $myrow;
+        $arrResult[] = $myrow;
       }
       $stmt->close();
 
       return $arrResult;
-
     }
 
 
-    public function getReferralReasons($status)
+    public function getProgramData($department, $status, $schoolYear)
+    {
+      $programId = array(1, 2, 3, 4, 5, 6, 7, 8);
+
+      if($department == 1)
+      {
+        $stmt = $this->con->prepare("SELECT (SELECT COUNT(a.report_count) FROM report c INNER JOIN shs_student a ON c.student_id = a.student_id WHERE c.department_id=? AND c.status=? AND c.school_year=? AND a.program_id=?) as HSSCount,
+                                            (SELECT COUNT(a.report_count) FROM report c INNER JOIN shs_student a ON c.student_id = a.student_id WHERE c.department_id=? AND c.status=? AND c.school_year=? AND a.program_id=?) as ABMCount,
+                                            (SELECT COUNT(a.report_count) FROM report c INNER JOIN shs_student a ON c.student_id = a.student_id WHERE c.department_id=? AND c.status=? AND c.school_year=? AND a.program_id=?) as CPCount,
+                                            (SELECT COUNT(a.report_count) FROM report c INNER JOIN shs_student a ON c.student_id = a.student_id WHERE c.department_id=? AND c.status=? AND c.school_year=? AND a.program_id=?) as AniCount,
+                                            (SELECT COUNT(a.report_count) FROM report c INNER JOIN shs_student a ON c.student_id = a.student_id WHERE c.department_id=? AND c.status=? AND c.school_year=? AND a.program_id=?) as FDCount,
+                                            (SELECT COUNT(a.report_count) FROM report c INNER JOIN shs_student a ON c.student_id = a.student_id WHERE c.department_id=? AND c.status=? AND c.school_year=? AND a.program_id=?) as MACount");
+
+        $stmt->bind_param("iisiiisiiisiiisiiisiiisi", $department, $status, $schoolYear, $programId[0],
+                                                      $department, $status, $schoolYear, $programId[1],
+                                                      $department, $status, $schoolYear, $programId[2],
+                                                      $department, $status, $schoolYear, $programId[3],
+                                                      $department, $status, $schoolYear, $programId[4],
+                                                      $department, $status, $schoolYear, $programId[5]);
+      }
+      else
+      {
+        $stmt = $this->con->prepare("SELECT (SELECT COUNT(a.report_count) FROM report c INNER JOIN college_student a ON c.student_id = a.student_id WHERE c.department_id=? AND c.status=? AND c.school_year=? AND a.program_id=?) as SECount,
+                                            (SELECT COUNT(a.report_count) FROM report c INNER JOIN college_student a ON c.student_id = a.student_id WHERE c.department_id=? AND c.status=? AND c.school_year=? AND a.program_id=?) as GDCount,
+                                            (SELECT COUNT(a.report_count) FROM report c INNER JOIN college_student a ON c.student_id = a.student_id WHERE c.department_id=? AND c.status=? AND c.school_year=? AND a.program_id=?) as WDCount,
+                                            (SELECT COUNT(a.report_count) FROM report c INNER JOIN college_student a ON c.student_id = a.student_id WHERE c.department_id=? AND c.status=? AND c.school_year=? AND a.program_id=?) as AniCount,
+                                            (SELECT COUNT(a.report_count) FROM report c INNER JOIN college_student a ON c.student_id = a.student_id WHERE c.department_id=? AND c.status=? AND c.school_year=? AND a.program_id=?) as MMACount,
+                                            (SELECT COUNT(a.report_count) FROM report c INNER JOIN college_student a ON c.student_id = a.student_id WHERE c.department_id=? AND c.status=? AND c.school_year=? AND a.program_id=?) as FDCount,
+                                            (SELECT COUNT(a.report_count) FROM report c INNER JOIN college_student a ON c.student_id = a.student_id WHERE c.department_id=? AND c.status=? AND c.school_year=? AND a.program_id=?) as REMCount,
+                                            (SELECT COUNT(a.report_count) FROM report c INNER JOIN college_student a ON c.student_id = a.student_id WHERE c.department_id=? AND c.status=? AND c.school_year=? AND a.program_id=?) as BACount");
+
+        $stmt->bind_param("iisiiisiiisiiisiiisiiisiiisiiisi", $department, $status, $schoolYear, $programId[0],
+                                                              $department, $status, $schoolYear, $programId[1],
+                                                              $department, $status, $schoolYear, $programId[2],
+                                                              $department, $status, $schoolYear, $programId[3],
+                                                              $department, $status, $schoolYear, $programId[4],
+                                                              $department, $status, $schoolYear, $programId[5],
+                                                              $department, $status, $schoolYear, $programId[6],
+                                                              $department, $status, $schoolYear, $programId[7]);
+      }
+
+      $stmt->execute();
+      $result= $stmt->get_result();
+      $arrResult = array();
+      while ($myrow = $result->fetch_assoc())
+      {
+        $arrResult[] = $myrow;
+      }
+      $stmt->close();
+
+      return $arrResult;
+    }
+
+
+    public function getLevelData($department, $status, $schoolYear)
+    {
+      $level = array(1, 2, 3, 4);
+
+      if($department == 1)
+      {
+        $stmt = $this->con->prepare("SELECT (SELECT COUNT(*) FROM report c INNER JOIN shs_student a ON c.student_id = a.student_id WHERE c.department_id=? AND c.status=? AND c.school_year=? AND a.level=?) as gradeElevenCount,
+                                            (SELECT COUNT(*) FROM report c INNER JOIN shs_student a ON c.student_id = a.student_id WHERE c.department_id=? AND c.status=? AND c.school_year=? AND a.level=?) as gradeTwelveCount");
+
+        $stmt->bind_param("iisiiisi", $department, $status, $schoolYear, $level[0], $department, $status, $schoolYear, $level[1]);
+      }
+      else
+      {
+        $stmt = $this->con->prepare("SELECT (SELECT COUNT(*) FROM report c INNER JOIN college_student a ON c.student_id = a.student_id WHERE c.department_id=? AND c.status=? AND c.school_year=? AND a.level=?) as firstYearCount,
+                                            (SELECT COUNT(*) FROM report c INNER JOIN college_student a ON c.student_id = a.student_id WHERE c.department_id=? AND c.status=? AND c.school_year=? AND a.level=?) as secondYearCount,
+                                            (SELECT COUNT(*) FROM report c INNER JOIN college_student a ON c.student_id = a.student_id WHERE c.department_id=? AND c.status=? AND c.school_year=? AND a.level=?) as thirdYearCount,
+                                            (SELECT COUNT(*) FROM report c INNER JOIN college_student a ON c.student_id = a.student_id WHERE c.department_id=? AND c.status=? AND c.school_year=? AND a.level=?) as fourthYearCount");
+
+        $stmt->bind_param("iisiiisiiisiiisi", $department, $status, $schoolYear, $level[0], $department, $status, $schoolYear, $level[1], $department, $status, $schoolYear, $level[2], $department, $status, $schoolYear, $level[3]);
+      }
+
+      $stmt->execute();
+      $result= $stmt->get_result();
+      $arrResult = array();
+      while ($myrow = $result->fetch_assoc())
+      {
+        $arrResult[] = $myrow;
+      }
+      $stmt->close();
+
+      return $arrResult;
+    }
+
+
+    public function getReasonData($department, $status, $schoolYear)
+    {
+      $refReason = array(1, 2, 3, 4, 5, 6);
+
+
+      $stmt = $this->con->prepare("SELECT (SELECT COUNT(*) FROM report c INNER JOIN reason a ON c.report_id = a.report_id WHERE c.department_id=? AND c.status=? AND c.school_year=? AND a.referral_reason_id=?) as reasonOneCount,
+                                          (SELECT COUNT(*) FROM report c INNER JOIN reason a ON c.report_id = a.report_id WHERE c.department_id=? AND c.status=? AND c.school_year=? AND a.referral_reason_id=?) as reasonTwoCount,
+                                          (SELECT COUNT(*) FROM report c INNER JOIN reason a ON c.report_id = a.report_id WHERE c.department_id=? AND c.status=? AND c.school_year=? AND a.referral_reason_id=?) as reasonThreeCount,
+                                          (SELECT COUNT(*) FROM report c INNER JOIN reason a ON c.report_id = a.report_id WHERE c.department_id=? AND c.status=? AND c.school_year=? AND a.referral_reason_id=?) as reasonFourCount,
+                                          (SELECT COUNT(*) FROM report c INNER JOIN reason a ON c.report_id = a.report_id WHERE c.department_id=? AND c.status=? AND c.school_year=? AND a.referral_reason_id=?) as reasonFiveCount,
+                                          (SELECT COUNT(*) FROM report c INNER JOIN reason a ON c.report_id = a.report_id WHERE c.department_id=? AND c.status=? AND c.school_year=? AND a.referral_reason_id=?) as reasonSixCount,
+                                          (SELECT COUNT(*) FROM report WHERE department_id=? AND status=? AND school_year=? AND referral_comment IS NOT NULL) as otherReasonCount");
+
+      $stmt->bind_param("iisiiisiiisiiisiiisiiisiiis", $department, $status, $schoolYear, $refReason[0], $department, $status, $schoolYear, $refReason[1], $department, $status, $schoolYear, $refReason[2], $department, $status, $schoolYear, $refReason[3], $department, $status, $schoolYear, $refReason[4], $department, $status, $schoolYear, $refReason[5], $department, $status, $schoolYear);
+      $stmt->execute();
+      $result= $stmt->get_result();
+      $arrResult = array();
+      while ($myrow = $result->fetch_assoc())
+      {
+        $arrResult[] = $myrow;
+      }
+      $stmt->close();
+
+      return $arrResult;
+    }
+
+
+    public function getStatusData($department, $status, $schoolYear)
+    {
+      $reportStatus = array(1, 2, 3);
+
+      $stmt = $this->con->prepare("SELECT (SELECT COUNT(*) FROM report WHERE report_status_id=? AND department_id=? AND status=? AND school_year=?) as uncounseledCount, (SELECT COUNT(*) FROM report WHERE report_status_id=? AND department_id=? AND status=? AND school_year=?) as inProgressCount, (SELECT COUNT(*) FROM report WHERE report_status_id=? AND department_id=? AND status=? AND school_year=?) as counseledCount");
+      $stmt->bind_param("iiisiiisiiis", $reportStatus[0], $department, $status, $schoolYear, $reportStatus[1], $department, $status, $schoolYear, $reportStatus[2], $department, $status, $schoolYear);
+      $stmt->execute();
+      $result= $stmt->get_result();
+      $arrResult = array();
+      while ($myrow = $result->fetch_assoc())
+      {
+        $arrResult[] = $myrow;
+      }
+      $stmt->close();
+
+      return $arrResult;
+    }
+
+
+    public function getReferralReasons($reportId)
+    {
+        $stmt = $this->con->prepare("SELECT referral_reason FROM ((report INNER JOIN reason ON report.report_id=reason.report_id) INNER JOIN report_reason ON reason.referral_reason_id=report_reason.referral_reason_id) WHERE report.report_id=?");
+
+        $stmt->bind_param("i",$reportId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $arrResult = array();
+
+        if($result->num_rows)
+        {
+            while ($myrow = $result->fetch_assoc())
+            {
+                $arrResult[] = $myrow;
+            }
+        }
+        else
+        {
+            $arrResult[]['referral_reason'] = "N/A";
+        }
+
+        $stmt->close();
+        return $arrResult;
+    }
+
+
+    public function updateStatus($reportId, $updateStatus, $comment)
+    {
+      $stmt = $this->con->prepare("UPDATE report SET report_status_id=?, counselor_note=? WHERE report_id=?");
+      $stmt->bind_param("isi", $updateStatus, $comment, $reportId);
+      $result = $stmt->execute();
+      $stmt->close();
+
+      if($result)
+      {
+          return true;
+      }
+      return false;
+    }
+
+
+    public function setReporAsUpdated($reportId, $isUpdated)
+    {
+      $stmt = $this->con->prepare("UPDATE report SET is_updated=? WHERE report_id=?");
+      $stmt->bind_param("ii", $isUpdated, $reportId);
+      $result = $stmt->execute();
+      $stmt->close();
+
+      if($result)
+      {
+          return true;
+      }
+      return false;
+    }
+
+
+    public function getReportStatusName($reportStatus)
+    {
+
+      $stmt = $this->con->prepare("SELECT report_status FROM report_status WHERE report_status_id=?");
+      $stmt->bind_param("i", $reportStatus);
+      $stmt->execute();
+      $report = $stmt->get_result()->fetch_assoc();
+      $stmt->close();
+
+      return $report['report_status'];
+    }
+
+
+    public function getStudentInfo($studId)
+    {
+      $studId = $studId . "%";
+      $limit = 5;
+
+      $stmt = $this->con->prepare("SELECT * FROM student WHERE student_id LIKE ? ORDER BY student_id DESC LIMIT ?");
+      $stmt->bind_param("si", $studId, $limit);
+      $stmt->execute();
+      $result= $stmt->get_result();
+      $arrResult = array();
+      while ($myrow = $result->fetch_assoc())
+      {
+        $arrResult[] = $myrow;
+      }
+      $stmt->close();
+
+      return $arrResult;
+    }
+
+
+    public function getStudentLevel($studId, $department)
+    {
+      if($department == 1)
+      {
+        $stmt = $this->con->prepare("SELECT level FROM shs_student WHERE student_id=?");
+      }
+      else
+      {
+        $stmt = $this->con->prepare("SELECT level FROM college_student WHERE student_id=?");
+      }
+
+      $stmt->bind_param("s", $studId);
+      $stmt->execute();
+      $user = $stmt->get_result()->fetch_assoc();
+      $stmt->close();
+
+      return $user['level'];
+    }
+
+
+    public function getStudentProgram($studId, $department)
+    {
+      if($department == 1)
+      {
+        $stmt = $this->con->prepare("SELECT program_id FROM shs_student WHERE student_id=?");
+      }
+      else
+      {
+        $stmt = $this->con->prepare("SELECT program_id FROM college_student WHERE student_id=?");
+      }
+
+      $stmt->bind_param("s", $studId);
+      $stmt->execute();
+      $user = $stmt->get_result()->fetch_assoc();
+      $stmt->close();
+
+      return $user['program_id'];
+    }
+
+
+    public function getStudentName($reportId)
     {
         $stmt = $this->con->prepare("SELECT * FROM report WHERE status=?");
         $stmt->bind_param("i",$status);
@@ -800,232 +1242,41 @@ class DbOperation
     }
 
 
-
-    public function updateStatus($reportId, $status, $comment)
+    public function resetDatabase()
     {
-      $stmt = $this->con->prepare("UPDATE report SET report_status_id=?, counselor_note=? WHERE report_id=?");
-      $stmt->bind_param("isi",$status, $comment, $reportId);
-      $result = $stmt->execute();
-      $stmt->close();
+        $sqlEmptyStudent = "DELETE FROM student";
+        $sqlEmptyMessage = "TRUNCATE TABLE message";
+        $sqlEmptyReport = "TRUNCATE TABLE report";
+        $sqlEmptyReason = "TRUNCATE TABLE reason";
+        $sqlEmptyFaculty = "UPDATE faculty_account SET reported_count=0";
 
-      if($result)
-      {
-          return true;
-      }
-        return false;
+        $emptyStudentResult = $this->con->query($sqlEmptyStudent);
+        $emptyMessageResult = $this->con->query($sqlEmptyMessage);
+        $emptyReportResult = $this->con->query($sqlEmptyReport);
+        $emptyReasonResult = $this->con->query($sqlEmptyReason);
+        $emptyFacultyResult = $this->con->query($sqlEmptyFaculty);
 
-      }
+        $this->con->close();
 
-
-
-
-
-
-
-
-    //test code BELOW!!!
-    public function sampleFunc($status)
-    {
-        $stmt = $this->con->prepare("SELECT * FROM user WHERE status=?");
-        $stmt->bind_param("i",$status);
-        $stmt->execute();
-        $result = $stmt->get_result();
-
-        while($row = $result->fetch_assoc())
+        if($emptyStudentResult && $emptyMessageResult && $emptyReportResult && $emptyReasonResult && $emptyFacultyResult)
         {
-           $rows [] = $row;
-        }
-
-        $stmt->free_result();
-        $stmt->close();
-
-        return $rows;
-
-    }
-
-
-    //Method to register a new student
-    public function createStudent($name,$username,$pass){
-        if (!$this->isStudentExists($username)) {
-            $password = md5($pass);
-            $apikey = $this->generateApiKey();
-            $stmt = $this->con->prepare("INSERT INTO students(name, username, password, api_key) values(?, ?, ?, ?)");
-            $stmt->bind_param("ssss", $name, $username, $password, $apikey);
-            $result = $stmt->execute();
-            $stmt->close();
-            if ($result) {
-                return 0;
-            } else {
-                return 1;
-            }
-        } else {
-            return 2;
-        }
-    }
-
-    //Method to let a student log in
-    public function studentLogin($username,$pass){
-        $password = md5($pass);
-        $stmt = $this->con->prepare("SELECT * FROM students WHERE username=? and password=?");
-        $stmt->bind_param("ss",$username,$password);
-        $stmt->execute();
-        $stmt->store_result();
-        $num_rows = $stmt->num_rows;
-        $stmt->close();
-        return $num_rows>0;
-    }
-
-
-    //method to register a new facultly
-    public function createFaculty($name,$username,$pass,$subject){
-        if (!$this->isFacultyExists($username)) {
-            $password = md5($pass);
-            $apikey = $this->generateApiKey();
-            $stmt = $this->con->prepare("INSERT INTO faculties(name, username, password, subject, api_key) values(?, ?, ?, ?, ?)");
-            $stmt->bind_param("sssss", $name, $username, $password, $subject, $apikey);
-            $result = $stmt->execute();
-            $stmt->close();
-            if ($result) {
-                return 0;
-            } else {
-                return 1;
-            }
-        } else {
-            return 2;
-        }
-    }
-
-    //method to let a faculty log in
-    public function facultyLogin($username, $pass){
-        $password = md5($pass);
-        $stmt = $this->con->prepare("SELECT * FROM faculties WHERE username=? and password =?");
-        $stmt->bind_param("ss",$username,$password);
-        $stmt->execute();
-        $stmt->store_result();
-        $num_rows = $stmt->num_rows;
-        $stmt->close();
-        return $num_rows>0;
-    }
-
-    //Method to create a new assignment
-    public function createAssignment($name,$detail,$facultyid,$studentid){
-        $stmt = $this->con->prepare("INSERT INTO assignments (name,details,faculties_id,students_id) VALUES (?,?,?,?)");
-        $stmt->bind_param("ssii",$name,$detail,$facultyid,$studentid);
-        $result = $stmt->execute();
-        $stmt->close();
-        if($result){
             return true;
         }
         return false;
     }
 
-    //Method to update assignment status
-    public function updateAssignment($id){
-        $stmt = $this->con->prepare("UPDATE assignments SET completed = 1 WHERE id=?");
-        $stmt->bind_param("i",$id);
+    public function updateAccount($email, $lastName, $firstName)
+    {
+        $stmt = $this->con->prepare("UPDATE user SET last_name=?, first_name=? WHERE email=?");
+        $stmt->bind_param("sss", $lastName, $firstName, $email);
         $result = $stmt->execute();
         $stmt->close();
-        if($result){
+
+        if($result)
+        {
             return true;
         }
         return false;
     }
 
-    //Method to get all the assignments of a particular student
-    public function getAssignments($studentid){
-        $stmt = $this->con->prepare("SELECT * FROM assignments WHERE students_id=?");
-        $stmt->bind_param("i",$studentid);
-        $stmt->execute();
-        $assignments = $stmt->get_result();
-        $stmt->close();
-        return $assignments;
-    }
-
-    //Method to get student details
-    public function getStudent($username){
-        $stmt = $this->con->prepare("SELECT * FROM students WHERE username=?");
-        $stmt->bind_param("s",$username);
-        $stmt->execute();
-        $student = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
-        return $student;
-    }
-
-    //Method to fetch all students from database
-    public function getAllStudents(){
-        $stmt = $this->con->prepare("SELECT * FROM students");
-        $stmt->execute();
-        $students = $stmt->get_result();
-        $stmt->close();
-        return $students;
-    }
-
-    //Method to get faculy details by username
-    public function getFaculty($username){
-        $stmt = $this->con->prepare("SELECT * FROM faculties WHERE username=?");
-        $stmt->bind_param("s",$username);
-        $stmt->execute();
-        $faculty = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
-        return $faculty;
-    }
-
-    //Method to get faculty name by id
-    public function getFacultyName($id){
-        $stmt = $this->con->prepare("SELECT name FROM faculties WHERE id=?");
-        $stmt->bind_param("i",$id);
-        $stmt->execute();
-        $faculty = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
-        return $faculty['name'];
-    }
-
-    //Method to check the student username already exist or not
-    private function isStudentExists($username) {
-        $stmt = $this->con->prepare("SELECT id from students WHERE username = ?");
-        $stmt->bind_param("s", $username);
-        $stmt->execute();
-        $stmt->store_result();
-        $num_rows = $stmt->num_rows;
-        $stmt->close();
-        return $num_rows > 0;
-    }
-
-    //Method to check the faculty username already exist or not
-    private function isFacultyExists($username) {
-        $stmt = $this->con->prepare("SELECT id from faculties WHERE username = ?");
-        $stmt->bind_param("s", $username);
-        $stmt->execute();
-        $stmt->store_result();
-        $num_rows = $stmt->num_rows;
-        $stmt->close();
-        return $num_rows > 0;
-    }
-
-    //Checking the student is valid or not by api key
-    public function isValidStudent($api_key) {
-        $stmt = $this->con->prepare("SELECT id from students WHERE api_key = ?");
-        $stmt->bind_param("s", $api_key);
-        $stmt->execute();
-        $stmt->store_result();
-        $num_rows = $stmt->num_rows;
-        $stmt->close();
-        return $num_rows > 0;
-    }
-
-    //Checking the faculty is valid or not by api key
-    public function isValidFaculty($api_key){
-        $stmt = $this->con->prepare("SELECT id from faculties WHERE api_key=?");
-        $stmt->bind_param("s",$api_key);
-        $stmt->execute();
-        $stmt->store_result();
-        $num_rows = $stmt->num_rows;
-        $stmt->close();
-        return $num_rows>0;
-    }
-
-    //Method to generate a unique api key every time
-    private function generateApiKey(){
-        return md5(uniqid(rand(), true));
-    }
 }

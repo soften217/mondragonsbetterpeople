@@ -1,5 +1,4 @@
-//DIRECTIVE MODULE
-angular.module('aceWeb.directive', [])
+angular.module('aceWeb')
 
 
 //<-------------------------------DIRECTIVE---------------------------------------------------->
@@ -116,83 +115,23 @@ angular.module('aceWeb.directive', [])
   };
 }])
 
+
 // <----------------------------------------------------------------------------------->
 
-.directive('fileDialog', [function() {
+
+.directive('fileModel', ['$parse', function ($parse) {
     return {
-        restrict: 'A',
-        scope: true,
-        link: function (scope, element, attr) {
-            element.bind('change', function (evt) {
-                scope.$emit('fileAdded', evt.target.files[0]);
+    restrict: 'A',
+    link: function(scope, element, attrs) {
+        var model = $parse(attrs.fileModel);
+        var modelSetter = model.assign;
+
+        element.bind('change', function(){
+            scope.$apply(function(){
+                modelSetter(scope, element[0].files[0]);
             });
-        }
-    };
+        });
+    }
+   };
 }])
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//<-------------------------------FILTER---------------------------------------------------->
-
-
-.filter('abs', function () {
-  return function(val) {
-    return Math.abs(val);
-  }
-})
-
-
-//<--------------------------------------------------------------------------------->
-
-
-.filter('newline2br', function($sce) {
-  var span = document.createElement('span');
-    return function(input) {
-        if (!input) return input;
-        var lines = input.split('\n');
-
-        for (var i = 0; i < lines.length; i++) {
-            span.innerText = lines[i];
-            span.textContent = lines[i]; //for Mozilla Firefox
-            lines[i] = span.innerHTML;
-        }
-        //return lines.join('<br />');
-        return $sce.trustAsHtml(lines.join('<br />'));
-    }
-})
-
-
-//<--------------------------------------------------------------------------------->
-
-
-.filter('startFrom', function () {
-  return function (input, start) {
-    if (input) {
-      start = +start;
-      return input.slice(start);
-    }
-    return [];
-  };
-})

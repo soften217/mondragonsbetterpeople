@@ -1,128 +1,116 @@
 <?php
 
 
-    //temporary function
-    function sendResponse($response)
-    {
-        header('Content-Type: application/json');
-        header("Access-Control-Allow-Origin: *");
-        echo json_encode($response);
-    }
-
-
-    //temporary function
-    function sendStatusCode($statusCode)
-    {
-        header('Content-Type: application/json');
-        header("Access-Control-Allow-Origin: *");
-        http_response_code($statusCode);
-    }
-
-
     function setResponse($response, $statusCode, $responseBody)
     {
-        header('Content-Type: application/json');
-        header("Access-Control-Allow-Origin: *");
+      header('Content-Type: application/json');
+      header("Access-Control-Allow-Origin: *");
 
-        return $response->withStatus($statusCode)->withJson($responseBody);
+      return $response->withStatus($statusCode)->withJson($responseBody);
     }
 
 
     function setSuccessResponse($response, $statusCode)
     {
-        header('Content-Type: application/json');
-        header("Access-Control-Allow-Origin: *");
+      header('Content-Type: application/json');
+      header("Access-Control-Allow-Origin: *");
 
-        return $response->withStatus($statusCode);
+      return $response->withStatus($statusCode);
     }
 
 
     function sendEmail($recipient, $subject, $body)
-	{
-		$mail = new PHPMailer;
+    {
+      $mail = new PHPMailer;
 
-        $mail->isSMTP();                                      // Set mailer to use SMTP
-        $mail->SMTPAuth = true;                               // Enable SMTP authentication
-        $mail->Host = $_ENV['GMAIL']->GMAIL_HOST;
-        $mail->Username = $_ENV['GMAIL']->GMAIL_EMAIL;                        // SMTP username
-        $mail->Password = $_ENV['GMAIL']->GMAIL_PWORD;                        // SMTP password
-        $mail->SMTPSecure = 'tls';                            // Enable TLS encryption, `ssl` also accepted
-        $mail->Port = 587;                                    // TCP port to connect to
-
-        if(count($recipient) == 1){
-          $mail->AddAddress($recipient);
-        } else {
-          for($counter=0; $counter < count($recipient); $counter++){
-            $email = implode(',', $recipient[$counter]);
-            $mail->AddAddress($email);
-          }
+      if(is_array($recipient))
+      {
+        for($counter=0; $counter < count($recipient); $counter++)
+        {
+          $email = $recipient[$counter]['email'];
+          $mail->AddAddress($email);
         }
+      }
+      else
+      {
+        $mail->AddAddress($recipient);
+      }
 
+      $mail->isSMTP();                                                      // Set mailer to use SMTP
+      $mail->SMTPAuth = true;                                               // Enable SMTP authentication
+      $mail->Host = $_ENV['GMAIL']->GMAIL_HOST;
+      $mail->Username = $_ENV['GMAIL']->GMAIL_EMAIL;                        // SMTP username
+      $mail->Password = $_ENV['GMAIL']->GMAIL_PWORD;                        // SMTP password
+      $mail->SMTPSecure = 'tls';                                            // Enable TLS encryption, `ssl` also accepted
+      $mail->Port = 587;                                                    // TCP port to connect to
+      //$mail->addReplyTo('ace@iacademy.com', 'ACE');
+      $mail->SetFrom($_ENV['GMAIL']->GMAIL_EMAIL, $_ENV['GMAIL']->GMAIL_SENDER_NAME);
+      $mail->Subject = $subject;
+      $mail->Body = $body;
+      $mail->IsHTML(true);
 
-
-        //$mail->AddAddress($recipient);                        // Name is optional
-
-        //$mail->addReplyTo('ace@iacademy.com', 'ACE');
-        $mail->SetFrom($_ENV['GMAIL']->GMAIL_EMAIL, $_ENV['GMAIL']->GMAIL_SENDER_NAME);
-        //$mail->addAttachment('/var/tmp/file.tar.gz');       // Add attachments
-        $mail->Subject = $subject;
-        $mail->Body = $body;
-        $mail->IsHTML(true);
-
-        return $mail->Send();
-	}
+      return $mail->Send();
+    }
 
 
     function randStrGen()
     {
-        $len = 5;
-        $result = "";
-        $chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-        $charArray = str_split($chars);
+      $len = 5;
+      $result = "";
+      $chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+      $charArray = str_split($chars);
 
-        for($i = 0; $i < $len; $i++)
-        {
-            $randItem = array_rand($charArray);
-            $result .= "".$charArray[$randItem];
-        }
+      for($i = 0; $i < $len; $i++)
+      {
+        $randItem = array_rand($charArray);
+        $result .= "".$charArray[$randItem];
+      }
 
-        return $result;
+      return $result;
     }
 
 
     function getTimestamp()
     {
-        $date = new DateTime();
-        $date->setTimezone(new DateTimeZone('Asia/Manila'));
+      $date = new DateTime();
+      $date->setTimezone(new DateTimeZone('Asia/Manila'));
 
-        return $date;
+      return $date;
     }
 
-    function databaseBackup(){
 
+    function backupDatabase($backupFile)
+    {
       $dbName = $_ENV['DB']->DB_NAME;
       $dbHost = $_ENV['DB']->DB_HOST;
       $dbUsername = $_ENV['DB']->DB_USERNAME;
-      $dbPassword = $_ENV['DB']->DB_PASSWORD;
-      $timestamp = getTimeStamp()->format('y-m-d_H-i');
-      $backupFile = $dbName . "(" .$timestamp . ").sql";
+      $command = $_ENV['PATH']->COMMAND_PATH_BACKUP . "--opt -h $dbHost -u $dbUsername $dbName > $backupFile";
 
-      //$command = "mysqldump --opt -h $dbhost -u $dbuser -p $dbpass $dbname | gzip > $backupFile";
-      //$command = "C:/xampp/mysql/bin/mysqldump --opt -h $dbHost -u $dbUsername -p $dbPassword $dbName > $backupFile";
-      //$command = "/xampp/mysql/bin/ mysqldump --opt -h $dbHost -u $dbUsername -p $dbPassword $dbName > $backupFile";
-      $command = "/xampp/mysql/bin/mysqldump --opt -h $dbHost -u $dbUsername $dbName > $backupFile";
+      exec($command, $output, $return);
 
-
-      //-r "/path/to/www/directory/sync/products.sql"
-
-      //C:/xampp/mysql/bin/mysqldump --opt -h localhost -u root -pPASSWORD ace > C:/text.sql
-      //-u root -p databasename
-
-      ///xampp/mysql/bin/mysqldump --opt -h localhost -u root ace > "C:\dbbkup.%DATE:/=%.bak"
-
-      $var = system($command, $ret_val);
-
-      return $var;
-
+      return $return;
     }
+
+    function logToFile($email, $msg)
+    {
+      $db = new DbOperation();
+
+      $timestamp = getTimestamp()->format('Y-m-d H:i:s');
+      $role = $db->getAccountRole($email);
+
+      if($role == 1)
+      {
+        $name = $db->getAccountRoleName($role);
+      }
+      else
+      {
+        $name = $db->getFirstName($email) . " " . $db->getLastName($email) . " (" . $db->getAccountRoleName($role) . ")";
+      }
+
+      $fh = fopen('log.txt', 'a');
+      fwrite($fh, "[" . $timestamp . "]" . " " . $name . " " . $msg . PHP_EOL);
+      fclose($fh);
+    }
+
+
 ?>
