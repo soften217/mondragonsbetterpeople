@@ -85,10 +85,6 @@ input[type="email"]:focus, input[type="email"].focus, input[type="password"]:foc
     padding-left: 30px;
 }
 
-form.ng-submitted input.ng-invalid {
-    background-color: #f9bcc5;
-}
-
 .loginForm .fa-times-circle {
     position: absolute;
     float: right;
@@ -144,6 +140,15 @@ form.ng-submitted input.ng-invalid {
     border-bottom: 5px solid #628a2c;
 }
 
+.form-group .button:hover{
+  background-color: #7eb238;
+}
+
+.form-group .button:active{
+  background-color: #628a2c;
+  border-bottom: 5px solid #8CC63F;
+}
+
 .form-group .button span {
     display: inline-block;
     position: relative;
@@ -171,6 +176,10 @@ form.ng-submitted input.ng-invalid {
     right: 0;
 }
 
+
+
+
+
 .form-group .forgotPass {
     display: block;
     margin: 0 auto;
@@ -194,4 +203,8 @@ a:active {
 
 .forgotPass:focus {
     outline: 0;
+}
+
+form.ng-submitted input.ng-invalid {
+    background-color: #f9bcc5;
 }
