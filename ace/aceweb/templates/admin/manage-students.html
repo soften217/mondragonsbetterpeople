@@ -1,0 +1,342 @@
+
+<head>
+	<title>ACE Program | Manage Students </title>
+
+	<link rel="stylesheet" type="text/css" href="css/admin/manage-student.css">
+</head>
+
+<body>
+
+	<div ng-show="!isLoading">
+
+		<div class="banner">
+			<div class="button-container col-md-12">
+							<div class="searchBar pull-right">
+								<input type="text" class="form-control" ng-model="searchBox" placeholder="&#xF002; Search " style="font-family:Arial, FontAwesome" />
+							</div>
+
+							<div class="delete-button col-md-1">
+								<button class="btn btn-default refresh" ng-disabled="disableDeleteBtn()" ng-click="deleteStudentList()"><i class="fa fa-user-times" aria-hidden="true"></i> Delete Students</button>
+							</div>
+			</div>
+
+			<img src="img/header1.png" class="img-responsive">
+		</div>
+
+		<div class="manageStudents col-md-12 col-md-offset-0 formContainer">
+
+						<div class="panel-body manageContainer table-responsive">
+
+								<table class="table table-inbox table-condensed">
+									<col width="20">
+									<col width="30">
+									<col width="140">
+									<col width="180">
+									<col width="80">
+									<col width="20">
+
+									<thead>
+										<tr class="header">
+												<th>
+													<center>
+													<input type="checkbox" ng-model="mainCheckbox" ng-change="controlCheckbox()">
+												</center>
+											</th>
+											<th>STUDENT ID</th>
+											<th>NAME</th>
+											<th>COURSE</th>
+											<th>REPORT COUNT</th>
+											<th><center>ACTIONS</center></th>
+
+										</tr>
+									</thead>
+
+									<tbody>
+										<tr class="listStudents" ng-repeat="student in students | filter: searchBox | startFrom:(currentPage-1)*itemsPerPage | limitTo:itemsPerPage" data-toggle="modal" data-target="#editModal" ng-click="showPopup(student)">
+											<td class="inbox-small-cells">
+												<center>
+													<input type="checkbox" data-checklist-model="studentList.student_id" data-checklist-value="student.student_id" noclick>
+												</center>
+											</td>
+
+											<td class="view-message">
+												{{student.student_id}}
+											</td>
+
+											<td>
+												{{student.student_name }}
+											</td>
+
+				              				<td>
+												{{student.program}}
+											</td>
+
+											<td>
+												<center>
+													{{student.report_count}}
+												</center>
+											</td>
+
+											<td>
+												<center>
+													<button type="button" class="btn btn-xs btn-danger" ng-click="deleteStudent(student)" noclick><span class="fa fa-trash"></span></button>
+												</center>
+											</td>
+
+										</tr>
+										<tr class="noShow" ng-show="(filtered = (students | filter: searchBox)).length == 0">
+											<td colspan="6"><center>NO RESULT</center></td>
+										</tr>
+									</tbody>
+
+								</table>
+
+								<center>
+									<div class="custom-pagination">
+										<ul class="custom-inner-pagination" uib-pagination total-items="(filtered = (students | filter: searchBox)).length" ng-model="currentPage" items-per-page="itemsPerPage" max-size="maxSize" class="pagination-sm" boundary-links="true" previous-text="&lsaquo;" next-text="&rsaquo;" first-text="&laquo;" last-text="&raquo;" ng-change="resetCheckbox()"></ul>
+									</div>
+								</center>
+
+							</div>
+
+<!--	<div class="container col-md-12" ng-show="!isLoading">
+		<div class="student-box col-md-12">
+
+				<aside class="lg-side">
+					<div class="list-body">
+						<div class="student-option">
+							<div class="head">
+								<div class="chk-all">
+									 <input type="checkbox" ng-model="mainCheckbox" ng-change="controlCheckbox()">
+								</div>
+
+								<div class="btn-group">
+									<button class="btn btn-default refresh" ng-disabled="disableDeleteBtn()" ng-click="deleteStudentList()">
+										<i class=" fa fa-trash-o"></i>Delete
+									</button>
+								</div>
+
+								<div class="pull-right">
+									 <input type="text" class="sr-input" ng-model="searchBox" placeholder="Search">
+								</div>
+
+							</div> <!-- head -->
+<!--						</div> <!-- mail option -->
+
+<!--						<div class="table-height">
+							<table class="table table-inbox table-hover">
+								<col width="20">
+								<col width="50">
+								<col width="100">
+								<col width="50">
+								<col width="20">
+								<col width="20">
+
+								<thead>
+
+									<tr class="title">
+
+										<td></td>
+										<td>STUDENT ID</td>
+										<td>NAME</td>
+										<td>COURSE</td>
+										<td>REPORT COUNT</td>
+										<td><center>ACTIONS</center></td>
+
+									</tr>
+								</thead>
+
+								<tbody>
+									<tr ng-repeat="student in students | filter: searchBox | startFrom:(currentPage-1)*itemsPerPage | limitTo:itemsPerPage" data-toggle="modal" data-target="#editModal" ng-click="showPopup(student)">
+										<td class="inbox-small-cells">
+											<center>
+												<input type="checkbox" data-checklist-model="studentList.student_id" data-checklist-value="student.student_id" noclick>
+											</center>
+										</td>
+
+										<td class="view-message">
+											{{student.student_id}}
+										</td>
+
+										<td>
+											{{student.student_name }}
+										</td>
+
+			              				<td>
+											{{student.program}}
+										</td>
+
+										<td>
+											{{student.report_count}}
+										</td>
+
+										<td>
+											<center>
+												<button type="button" class="btn btn-xs btn-danger" ng-click="deleteStudent(student)" noclick><span class="fa fa-trash"></span></button>
+											</center>
+										</td>
+
+									</tr>
+									<tr class="noShow" ng-show="(filtered = (students | filter: searchBox)).length == 0">
+										<td colspan="6"><center>NO RESULT</center></td>
+									</tr>
+								</tbody>
+
+							</table>
+
+							<div class="page pull-right custom-pagination">
+								<ul uib-pagination total-items="(filtered = (students | filter: searchBox)).length" ng-model="currentPage" items-per-page="itemsPerPage" max-size="maxSize" class="pagination-sm" boundary-links="true"></ul>
+							</div>
+
+						</div> <!-- table-height -->
+
+<!--					</div>
+				</aside>
+		</div>
+
+		<!-- MODALS -->
+
+		<div id="editModal" class="modal fade" role="dialog">
+			<div class="modal-dialog">
+
+				<div class="modal-content">
+
+					<div class="modal-header">
+						<button type="button" class="close" data-dismiss="modal"><span class="glyphicon glyphicon-remove custom-header-color" aria-hidden="true"></span></button>
+						<h3 class="modal-title custom-header-color"><i class="fa fa-pencil-square-o" aria-hidden="true"></i> Edit Student Information</h3>
+					</div>
+
+					<div class="modal-body">
+
+						<form name="updateStudentForm" class="form-horizontal custom-form" role="form" ng-submit="updateStudent(updateStudentForm)" novalidate>
+
+				            <div class="form-group">
+				              <label  class="col-md-12 control-label" for="studId">Student ID <i class="glyphicon glyphicon-question-sign" title="Must follow this format (1234-56789)"></i></label>
+				              <div class="col-md-12">
+				                <input type="text" class="form-control" id="studId" name="studId" ng-model="studId" pattern="[0-9]{4}\-[0-9]{5}|[0-9]{4}SHA[0-9]{5}" required/>
+				              </div>
+				            </div>
+				            <div ng-messages="updateStudentForm.studId.$error" ng-show="updateStudentForm.$submitted">
+				              <p class="invalid-text" ng-message="pattern">Please follow the format (####-#####) or (####SHA#####).</p>
+				              <p class="invalid-text" ng-message="required">This field is required</p>
+				            </div>
+
+				            <div class="form-group">
+				              <label  class="col-md-12 control-label" for="studLName">Last Name <i class="glyphicon glyphicon-question-sign" title="Must only have letters, space, and certain special characters (.  ,' -)"></i></label>
+				              <div class="col-md-12">
+				                <input type="text" class="form-control" id="studLName" name="studLName" ng-model="studLName" pattern="^[a-zA-Z ,.'-]+$" required/>
+				              </div>
+				            </div>
+				            <div ng-messages="updateStudentForm.studLName.$error" ng-show="updateStudentForm.$submitted">
+				              <p class="invalid-text" ng-message="pattern">Must only have letters, space, and certain special characters (.  ,' -)</p>
+				              <p class="invalid-text" ng-message="required">This field is required</p>
+				            </div>
+
+				            <div class="form-group">
+				              <label  class="col-md-12 control-label" for="studFName">First Name <i class="glyphicon glyphicon-question-sign" title="Must only have letters, space, and certain special characters (.  ,' -)"></i></label>
+				              <div class="col-md-12">
+				                <input type="text" class="form-control" id="studFName" name="studFName" ng-model="studFName" pattern="^[a-zA-Z ,.'-]+$" required/>
+				              </div>
+				            </div>
+				            <div ng-messages="updateStudentForm.studFName.$error" ng-show="updateStudentForm.$submitted">
+				              <p class="invalid-text" ng-message="pattern">Must only have letters, space, and certain special characters (.  ,' -)</p>
+				              <p class="invalid-text" ng-message="required">This field is required</p>
+				            </div>
+
+				            <div class="form-group">
+				              <label  class="col-md-12 control-label" for="program">Program</label>
+				              <div class="col-md-12">
+				              	<select class="form-control" name="program" id="program" ng-model="program" required>
+
+									<optgroup label="Academic Tracks" ng-if="department==1">
+										<option value="1">Humanities And Social Sciences</option>
+										<option value="2">Accountancy Business And Management</option>
+									</optgroup>
+
+									<optgroup label="Technical Vocational" ng-if="department==1">
+										<option value="3">Computer Programming</option>
+										<option value="4">Animation</option>
+										<option value="5">Fashion Design</option>
+									</optgroup>
+
+									<optgroup label="Arts and Design Track" ng-if="department==1">
+										<option value="6">Multimedia Arts</option>
+									</optgroup>
+
+
+									<optgroup label="School of Computing" ng-if="department==2">
+										<option value="1">Software Engineering</option>
+										<option value="2">Game Development</option>
+										<option value="3">Web Development</option>
+									</optgroup>
+
+									<optgroup label="School of Design" ng-if="department==2">
+										<option value="4">Animation</option>
+										<option value="5">Multimedia Arts</option>
+										<option value="6">Fashion Design</option>
+									</optgroup>
+
+									<optgroup label="School of Business" ng-if="department==2">
+										<option value="7">Real Estate Management</option>
+										<option value="8">Business Administration</option>
+									</optgroup>
+
+								</select>
+				              </div>
+				            </div>
+				            <div ng-messages="updateStudentForm.program.$error" ng-show="updateStudentForm.$submitted">
+				              <p class="invalid-text" ng-message="required">This field is required</p>
+				            </div>
+
+				            <div class="form-group">
+				              <label  class="col-md-12 control-label" for="level">Level</label>
+				              <div class="col-md-12">
+				              	<select class="form-control" name="level" id="level" ng-model="level" required>
+
+									<option ng-if="department==1" value="1">Grade 11</option>
+									<option ng-if="department==1" value="2">Grade 12</option>
+
+									<option ng-if="department==2" value="1">First Year</option>
+									<option ng-if="department==2" value="2">Second Year</option>
+									<option ng-if="department==2" value="3">Third Year</option>
+									<option ng-if="department==2" value="4">Fourth Year</option>
+
+								</select>
+				              </div>
+				            </div>
+				            <div ng-messages="updateStudentForm.level.$error" ng-show="updateStudentForm.$submitted">
+				              <p class="invalid-text" ng-message="required">This field is required</p>
+				            </div>
+
+				            <div class="updateBtn">
+				            	<button type="submit" class="btn btn-primary pull-right" ng-disabled="disableUpdateBtn">{{updateBtn}}</button>
+				            </div>
+
+				        </form>
+
+					</div>
+
+				</div>
+
+			</div>
+		</div><!-- modal closing tag -->
+
+
+	</div><!--container col-md-12-->
+
+	<div class="sk-fading-circle" ng-hide="!isLoading">
+      <div class="sk-circle1 sk-circle"></div>
+      <div class="sk-circle2 sk-circle"></div>
+      <div class="sk-circle3 sk-circle"></div>
+      <div class="sk-circle4 sk-circle"></div>
+      <div class="sk-circle5 sk-circle"></div>
+      <div class="sk-circle6 sk-circle"></div>
+      <div class="sk-circle7 sk-circle"></div>
+      <div class="sk-circle8 sk-circle"></div>
+      <div class="sk-circle9 sk-circle"></div>
+      <div class="sk-circle10 sk-circle"></div>
+      <div class="sk-circle11 sk-circle"></div>
+      <div class="sk-circle12 sk-circle"></div>
+  	</div> <!-- spinner -->
+
+</body>
